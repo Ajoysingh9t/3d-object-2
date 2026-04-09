@@ -1,0 +1,848 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Particle Sculptor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@300;400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #030309;
+    --panel: rgba(8, 8, 20, 0.85);
+    --border: rgba(255,255,255,0.07);
+    --accent: #7DF9FF;
+    --text: #c8cfe0;
+    --text-dim: #4a5068;
+    --radius: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #canvas-container {
+    position: fixed; inset: 0;
+  }
+
+  canvas#three { display: block; width: 100% !important; height: 100% !important; }
+
+  /* ── Webcam ── */
+  #webcam-wrap {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    width: 160px; height: 120px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: #000;
+    z-index: 20;
+    box-shadow: 0 0 24px rgba(125,249,255,0.12);
+  }
+  #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.85; }
+  #gesture-label {
+    position: absolute; bottom: 6px; left: 0; right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 8px var(--accent);
+  }
+  #hand-canvas {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  /* ── Side Panel ── */
+  #panel {
+    position: fixed;
+    left: 20px; top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px);
+    padding: 18px 16px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .panel-title {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .section { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Templates */
+  .template-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .tpl-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    padding: 7px 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .tpl-btn span.icon { font-size: 18px; }
+  .tpl-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(125,249,255,0.05); }
+  .tpl-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(125,249,255,0.1);
+    box-shadow: 0 0 12px rgba(125,249,255,0.15);
+  }
+
+  /* Colour */
+  .color-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .color-dot {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .color-dot:hover { transform: scale(1.2); }
+  .color-dot.active { border-color: #fff; transform: scale(1.15); }
+
+  #custom-color {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px dashed var(--text-dim);
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+  }
+  #custom-color::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+  #custom-color::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+  /* Sliders */
+  .slider-row { display: flex; flex-direction: column; gap: 5px; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }
+  .slider-label span { font-family: 'Space Mono', monospace; color: var(--accent); font-size: 10px; }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* Top bar */
+  #topbar {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 8px 22px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    z-index: 20;
+    backdrop-filter: blur(20px);
+    display: flex; align-items: center; gap: 10px;
+  }
+  #topbar .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  #topbar .dot.on { background: #4eff91; box-shadow: 0 0 8px #4eff91; }
+
+  /* Gesture indicator */
+  #gesture-bar {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 8px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    z-index: 20;
+    backdrop-filter: blur(20px);
+    display: flex; align-items: center; gap: 10px;
+    transition: opacity 0.3s;
+  }
+  #tension-bar-wrap {
+    width: 80px; height: 4px;
+    background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  #tension-bar { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width 0.1s; box-shadow: 0 0 6px var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="three"></canvas></div>
+
+<div id="topbar">
+  <div class="dot" id="cam-dot"></div>
+  PARTICLE SCULPTOR
+</div>
+
+<div id="panel">
+  <div class="section">
+    <div class="panel-title">Templates</div>
+    <div class="template-grid">
+      <button class="tpl-btn active" data-tpl="heart"><span class="icon">❤️</span>Heart</button>
+      <button class="tpl-btn" data-tpl="flower"><span class="icon">🌸</span>Flower</button>
+      <button class="tpl-btn" data-tpl="saturn"><span class="icon">🪐</span>Saturn</button>
+      <button class="tpl-btn" data-tpl="buddha"><span class="icon">🪬</span>Buddha</button>
+      <button class="tpl-btn" data-tpl="fireworks"><span class="icon">🎆</span>Fireworks</button>
+      <button class="tpl-btn" data-tpl="dna"><span class="icon">🧬</span>DNA</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Colour</div>
+    <div class="color-row">
+      <div class="color-dot active" data-color="#7DF9FF" style="background:#7DF9FF"></div>
+      <div class="color-dot" data-color="#FF6B9D" style="background:#FF6B9D"></div>
+      <div class="color-dot" data-color="#FFD166" style="background:#FFD166"></div>
+      <div class="color-dot" data-color="#06D6A0" style="background:#06D6A0"></div>
+      <div class="color-dot" data-color="#FF9F1C" style="background:#FF9F1C"></div>
+      <div class="color-dot" data-color="#FFFFFF" style="background:#FFFFFF"></div>
+      <input type="color" id="custom-color" value="#7DF9FF" title="Custom colour">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Controls</div>
+    <div class="slider-row">
+      <div class="slider-label">Particles <span id="count-val">4000</span></div>
+      <input type="range" id="count-slider" min="500" max="8000" value="4000" step="500">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label">Speed <span id="speed-val">1.0</span></div>
+      <input type="range" id="speed-slider" min="1" max="20" value="10" step="1">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label">Size <span id="size-val">1.5</span></div>
+      <input type="range" id="size-slider" min="1" max="30" value="15" step="1">
+    </div>
+  </div>
+</div>
+
+<div id="webcam-wrap">
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="hand-canvas"></canvas>
+  <div id="gesture-label">AWAITING CAMERA</div>
+</div>
+
+<div id="gesture-bar">
+  <span>HAND TENSION</span>
+  <div id="tension-bar-wrap"><div id="tension-bar"></div></div>
+  <span id="tension-val">0%</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// THREE.JS SETUP
+// ─────────────────────────────────────────────
+const canvas = document.getElementById('three');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x030309, 1);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0, 5);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let state = {
+  template: 'heart',
+  color: new THREE.Color('#7DF9FF'),
+  particleCount: 4000,
+  speed: 1.0,
+  size: 1.5,
+  tension: 0,         // 0–1 from hand gesture
+  scale: 1.0,         // driven by tension
+  targetScale: 1.0,
+  time: 0
+};
+
+// ─────────────────────────────────────────────
+// PARTICLE SYSTEM
+// ─────────────────────────────────────────────
+let particleMesh = null;
+let basePositions = null;   // target shape positions
+let velocities = null;
+
+function createParticleTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+const pTexture = createParticleTexture();
+
+// ── Shape generators ──────────────────────────
+function heartShape(t) {
+  const angle = t * Math.PI * 2;
+  const x = 16 * Math.pow(Math.sin(angle), 3);
+  const y = 13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle);
+  return new THREE.Vector3(x / 10, y / 10, (Math.random() - 0.5) * 0.1);
+}
+
+function flowerShape(t) {
+  const k = 5;
+  const angle = t * Math.PI * 2 * k;
+  const r = Math.abs(Math.cos(k * angle / 2));
+  const x = r * Math.cos(angle);
+  const y = r * Math.sin(angle);
+  const z = (Math.random() - 0.5) * 0.15;
+  return new THREE.Vector3(x * 2, y * 2, z);
+}
+
+function saturnShape(t, i, total) {
+  const ringPart = i / total;
+  if (ringPart < 0.5) {
+    // sphere
+    const phi = Math.acos(2 * t - 1);
+    const theta = Math.sqrt(total * Math.PI) * phi;
+    const r = 1.0;
+    return new THREE.Vector3(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi),
+      r * Math.sin(phi) * Math.sin(theta)
+    );
+  } else {
+    // rings
+    const a = t * Math.PI * 2;
+    const r = 1.4 + (ringPart - 0.5) * 1.6;
+    return new THREE.Vector3(
+      r * Math.cos(a),
+      (Math.random() - 0.5) * 0.06,
+      r * Math.sin(a)
+    );
+  }
+}
+
+function buddhaShape(t, i) {
+  // Simplified silhouette: sphere body + wider midsection + topknot
+  const ang = t * Math.PI * 2;
+  const layer = (i % 20) / 20;
+  const y = layer * 2.4 - 1.0;
+  // body profile (egg-like)
+  let r = 0.5 + 0.6 * Math.sin(Math.PI * (layer * 0.75));
+  if (layer > 0.88) r = 0.12 * (1 - (layer - 0.88) / 0.12); // topknot
+  const jitter = (Math.random() - 0.5) * 0.1;
+  return new THREE.Vector3(
+    (r + jitter) * Math.cos(ang),
+    y,
+    (r + jitter) * Math.sin(ang)
+  );
+}
+
+function fireworksShape(t) {
+  // Random burst shell positions
+  const phi = Math.acos(2 * Math.random() - 1);
+  const theta = Math.random() * Math.PI * 2;
+  const r = 0.1 + Math.random() * 2.2;
+  return new THREE.Vector3(
+    r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+function dnaShape(t, i) {
+  const strand = i % 2;
+  const h = t * 12 - 6;
+  const angle = t * Math.PI * 8 + strand * Math.PI;
+  const r = 0.6;
+  return new THREE.Vector3(r * Math.cos(angle), h, r * Math.sin(angle));
+}
+
+function buildBasePositions(template, count) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const t = i / count;
+    let v;
+    switch (template) {
+      case 'heart':     v = heartShape(t); break;
+      case 'flower':    v = flowerShape(t); break;
+      case 'saturn':    v = saturnShape(t, i, count); break;
+      case 'buddha':    v = buddhaShape(t, i); break;
+      case 'fireworks': v = fireworksShape(t); break;
+      case 'dna':       v = dnaShape(t, i); break;
+      default:          v = heartShape(t);
+    }
+    positions[i * 3]     = v.x;
+    positions[i * 3 + 1] = v.y;
+    positions[i * 3 + 2] = v.z;
+  }
+  return positions;
+}
+
+function buildParticles() {
+  if (particleMesh) {
+    scene.remove(particleMesh);
+    particleMesh.geometry.dispose();
+    particleMesh.material.dispose();
+  }
+
+  const count = state.particleCount;
+  const geo = new THREE.BufferGeometry();
+  basePositions = buildBasePositions(state.template, count);
+
+  // current positions start at base
+  const pos = new Float32Array(basePositions);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const c = state.color.clone();
+    const bright = 0.7 + Math.random() * 0.3;
+    colors[i * 3]     = c.r * bright;
+    colors[i * 3 + 1] = c.g * bright;
+    colors[i * 3 + 2] = c.b * bright;
+    sizes[i] = state.size * (0.5 + Math.random());
+  }
+
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  velocities = new Float32Array(count * 3);
+  for (let i = 0; i < count * 3; i++) velocities[i] = (Math.random() - 0.5) * 0.01;
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTexture: { value: pTexture },
+      uTime: { value: 0 },
+      uScale: { value: 1.0 }
+    },
+    vertexShader: `
+      attribute float size;
+      attribute vec3 color;
+      varying vec3 vColor;
+      uniform float uTime;
+      uniform float uScale;
+      void main() {
+        vColor = color;
+        vec4 mvPos = modelViewMatrix * vec4(position * uScale, 1.0);
+        gl_PointSize = size * (350.0 / -mvPos.z);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uTexture;
+      varying vec3 vColor;
+      void main() {
+        vec4 tex = texture2D(uTexture, gl_PointCoord);
+        gl_FragColor = vec4(vColor, 1.0) * tex;
+        if (gl_FragColor.a < 0.01) discard;
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexColors: true
+  });
+
+  particleMesh = new THREE.Points(geo, mat);
+  scene.add(particleMesh);
+}
+
+buildParticles();
+
+// ─────────────────────────────────────────────
+// FIREWORKS MODE — burst animation
+// ─────────────────────────────────────────────
+let fireworksVelocities = null;
+let fireworksActive = false;
+
+function triggerFireworks() {
+  if (state.template !== 'fireworks' || !particleMesh) return;
+  const count = state.particleCount;
+  fireworksVelocities = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const phi = Math.acos(2 * Math.random() - 1);
+    const theta = Math.random() * Math.PI * 2;
+    const sp = 0.02 + Math.random() * 0.05;
+    fireworksVelocities[i * 3]     = sp * Math.sin(phi) * Math.cos(theta);
+    fireworksVelocities[i * 3 + 1] = sp * Math.cos(phi);
+    fireworksVelocities[i * 3 + 2] = sp * Math.sin(phi) * Math.sin(theta);
+  }
+  fireworksActive = true;
+  setTimeout(() => { fireworksActive = false; buildParticles(); }, 2500);
+}
+
+// ─────────────────────────────────────────────
+// ANIMATION LOOP
+// ─────────────────────────────────────────────
+let prevTension = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  state.time += 0.01 * state.speed;
+
+  // Smooth scale
+  state.targetScale = 0.6 + state.tension * 2.2;
+  state.scale += (state.targetScale - state.scale) * 0.08;
+
+  if (particleMesh) {
+    particleMesh.material.uniforms.uTime.value = state.time;
+    particleMesh.material.uniforms.uScale.value = state.scale;
+
+    // Gentle rotation
+    if (state.template !== 'fireworks') {
+      particleMesh.rotation.y += 0.002 * state.speed;
+      particleMesh.rotation.x = Math.sin(state.time * 0.2) * 0.1;
+    }
+
+    const posAttr = particleMesh.geometry.attributes.position;
+    const count = state.particleCount;
+
+    if (state.template === 'fireworks' && fireworksActive && fireworksVelocities) {
+      // burst outward
+      for (let i = 0; i < count; i++) {
+        posAttr.array[i * 3]     += fireworksVelocities[i * 3];
+        posAttr.array[i * 3 + 1] += fireworksVelocities[i * 3 + 1] - 0.001; // gravity
+        posAttr.array[i * 3 + 2] += fireworksVelocities[i * 3 + 2];
+        fireworksVelocities[i * 3]     *= 0.97;
+        fireworksVelocities[i * 3 + 1] *= 0.97;
+        fireworksVelocities[i * 3 + 2] *= 0.97;
+      }
+    } else {
+      // Organic turbulence — particles drift and return to shape
+      for (let i = 0; i < count; i++) {
+        const bx = basePositions[i * 3];
+        const by = basePositions[i * 3 + 1];
+        const bz = basePositions[i * 3 + 2];
+
+        const cx = posAttr.array[i * 3];
+        const cy = posAttr.array[i * 3 + 1];
+        const cz = posAttr.array[i * 3 + 2];
+
+        // Spring toward base shape
+        const stiffness = 0.04 + state.tension * 0.02;
+        const damp = 0.85;
+
+        velocities[i * 3]     = (velocities[i * 3]     + (bx - cx) * stiffness) * damp;
+        velocities[i * 3 + 1] = (velocities[i * 3 + 1] + (by - cy) * stiffness) * damp;
+        velocities[i * 3 + 2] = (velocities[i * 3 + 2] + (bz - cz) * stiffness) * damp;
+
+        // Turbulence increases with tension
+        const turb = state.tension * 0.008;
+        velocities[i * 3]     += (Math.random() - 0.5) * turb;
+        velocities[i * 3 + 1] += (Math.random() - 0.5) * turb;
+        velocities[i * 3 + 2] += (Math.random() - 0.5) * turb;
+
+        posAttr.array[i * 3]     = cx + velocities[i * 3];
+        posAttr.array[i * 3 + 1] = cy + velocities[i * 3 + 1];
+        posAttr.array[i * 3 + 2] = cz + velocities[i * 3 + 2];
+      }
+    }
+    posAttr.needsUpdate = true;
+
+    // Colour pulse on tension spike
+    if (state.tension > 0.7 && prevTension < 0.7) {
+      const colorAttr = particleMesh.geometry.attributes.color;
+      const c = state.color;
+      for (let i = 0; i < count; i++) {
+        colorAttr.array[i * 3]     = Math.min(1, c.r + 0.3);
+        colorAttr.array[i * 3 + 1] = Math.min(1, c.g + 0.3);
+        colorAttr.array[i * 3 + 2] = Math.min(1, c.b + 0.3);
+      }
+      colorAttr.needsUpdate = true;
+    }
+    prevTension = state.tension;
+
+    // DNA helix animation
+    if (state.template === 'dna') {
+      for (let i = 0; i < count; i++) {
+        const t = i / count;
+        const v = dnaShape(t, i);
+        basePositions[i * 3]     = v.x;
+        basePositions[i * 3 + 1] = v.y;
+        basePositions[i * 3 + 2] = v.z;
+      }
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─────────────────────────────────────────────
+// MEDIAPIPE HANDS
+// ─────────────────────────────────────────────
+const videoEl = document.getElementById('webcam');
+const handCanvas = document.getElementById('hand-canvas');
+const hCtx = handCanvas.getContext('2d');
+const gestureLabel = document.getElementById('gesture-label');
+const camDot = document.getElementById('cam-dot');
+const tensionBar = document.getElementById('tension-bar');
+const tensionVal = document.getElementById('tension-val');
+
+function setHandsSize() {
+  const wrap = document.getElementById('webcam-wrap');
+  handCanvas.width = wrap.clientWidth;
+  handCanvas.height = wrap.clientHeight;
+}
+setHandsSize();
+
+// Load MediaPipe Hands via CDN
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function initHands() {
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js');
+
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false });
+    videoEl.srcObject = stream;
+    camDot.classList.add('on');
+    gestureLabel.textContent = 'INITIALISING…';
+
+    const hands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`
+    });
+    hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+
+    hands.onResults(onHandResults);
+
+    const mpCam = new Camera(videoEl, {
+      onFrame: async () => { await hands.send({ image: videoEl }); },
+      width: 320, height: 240
+    });
+    mpCam.start();
+    gestureLabel.textContent = 'READY';
+  } catch (e) {
+    gestureLabel.textContent = 'NO CAMERA';
+    console.warn('Camera/MediaPipe init failed:', e);
+  }
+}
+
+function calcHandTension(landmarks) {
+  // Use distance between thumb tip (4) and index tip (8) as primary tension metric
+  const thumb = landmarks[4];
+  const index = landmarks[8];
+  const dx = thumb.x - index.x;
+  const dy = thumb.y - index.y;
+  const pinchDist = Math.sqrt(dx * dx + dy * dy);
+
+  // Also measure overall hand openness (palm width + finger spread)
+  const wrist = landmarks[0];
+  const middleTip = landmarks[12];
+  const palmH = Math.sqrt(
+    Math.pow(middleTip.x - wrist.x, 2) + Math.pow(middleTip.y - wrist.y, 2)
+  );
+
+  // pinch close = high tension, open hand = low tension
+  const pinchTension = 1 - Math.min(1, pinchDist / 0.25);
+  // palm open = low, closed = high
+  const palmTension = 1 - Math.min(1, palmH / 0.5);
+  return Math.max(pinchTension, palmTension * 0.7);
+}
+
+function onHandResults(results) {
+  hCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    state.tension = Math.max(0, state.tension - 0.05);
+    gestureLabel.textContent = 'NO HANDS';
+    updateTensionUI();
+    return;
+  }
+
+  let maxTension = 0;
+  results.multiHandLandmarks.forEach(landmarks => {
+    maxTension = Math.max(maxTension, calcHandTension(landmarks));
+    drawHandSkeleton(landmarks);
+  });
+
+  state.tension += (maxTension - state.tension) * 0.25;
+  updateTensionUI();
+
+  const pct = Math.round(state.tension * 100);
+  if (pct < 20) gestureLabel.textContent = 'OPEN HAND → EXPAND';
+  else if (pct < 60) gestureLabel.textContent = 'HALF TENSION';
+  else gestureLabel.textContent = 'FULL TENSION ✦';
+
+  // Fireworks trigger: two hands, very open
+  if (state.template === 'fireworks' && results.multiHandLandmarks.length === 2 && !fireworksActive) {
+    if (state.tension < 0.2) triggerFireworks();
+  }
+}
+
+function drawHandSkeleton(lm) {
+  const w = handCanvas.width, h = handCanvas.height;
+  const CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],[0,17]
+  ];
+  hCtx.strokeStyle = 'rgba(125,249,255,0.6)';
+  hCtx.lineWidth = 1;
+  CONNECTIONS.forEach(([a, b]) => {
+    hCtx.beginPath();
+    hCtx.moveTo((1 - lm[a].x) * w, lm[a].y * h);
+    hCtx.lineTo((1 - lm[b].x) * w, lm[b].y * h);
+    hCtx.stroke();
+  });
+  lm.forEach(p => {
+    hCtx.beginPath();
+    hCtx.arc((1 - p.x) * w, p.y * h, 2.5, 0, Math.PI * 2);
+    hCtx.fillStyle = 'rgba(125,249,255,0.9)';
+    hCtx.fill();
+  });
+}
+
+function updateTensionUI() {
+  const pct = Math.round(state.tension * 100);
+  tensionBar.style.width = pct + '%';
+  tensionVal.textContent = pct + '%';
+}
+
+initHands();
+
+// ─────────────────────────────────────────────
+// UI CONTROLS
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tpl-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.template = btn.dataset.tpl;
+    buildParticles();
+    if (state.template === 'fireworks') setTimeout(triggerFireworks, 300);
+  });
+});
+
+document.querySelectorAll('.color-dot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    state.color = new THREE.Color(dot.dataset.color);
+    applyColor();
+  });
+});
+
+document.getElementById('custom-color').addEventListener('input', e => {
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+  state.color = new THREE.Color(e.target.value);
+  applyColor();
+});
+
+function applyColor() {
+  if (!particleMesh) return;
+  const colorAttr = particleMesh.geometry.attributes.color;
+  const c = state.color;
+  const count = state.particleCount;
+  for (let i = 0; i < count; i++) {
+    const bright = 0.7 + Math.random() * 0.3;
+    colorAttr.array[i * 3]     = c.r * bright;
+    colorAttr.array[i * 3 + 1] = c.g * bright;
+    colorAttr.array[i * 3 + 2] = c.b * bright;
+  }
+  colorAttr.needsUpdate = true;
+}
+
+const countSlider = document.getElementById('count-slider');
+const speedSlider = document.getElementById('speed-slider');
+const sizeSlider  = document.getElementById('size-slider');
+
+countSlider.addEventListener('input', e => {
+  state.particleCount = +e.target.value;
+  document.getElementById('count-val').textContent = state.particleCount;
+  buildParticles();
+});
+speedSlider.addEventListener('input', e => {
+  state.speed = +e.target.value / 10;
+  document.getElementById('speed-val').textContent = state.speed.toFixed(1);
+});
+sizeSlider.addEventListener('input', e => {
+  state.size = +e.target.value / 10;
+  document.getElementById('size-val').textContent = state.size.toFixed(1);
+  if (particleMesh) {
+    const sizes = particleMesh.geometry.attributes.size;
+    if (sizes) {
+      for (let i = 0; i < state.particleCount; i++)
+        sizes.array[i] = state.size * (0.5 + Math.random());
+      sizes.needsUpdate = true;
+    }
+  }
+});
+
+// Mouse drag to rotate
+let isDragging = false, prevMouse = { x: 0, y: 0 };
+document.getElementById('canvas-container').addEventListener('mousedown', e => { isDragging = true; prevMouse = { x: e.clientX, y: e.clientY }; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (!isDragging || !particleMesh) return;
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  particleMesh.rotation.y += dx * 0.005;
+  particleMesh.rotation.x += dy * 0.005;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+
+// Scroll to zoom
+window.addEventListener('wheel', e => {
+  camera.position.z = Math.max(2, Math.min(12, camera.position.z + e.deltaY * 0.005));
+});
+</script>
+</body>
+</html>

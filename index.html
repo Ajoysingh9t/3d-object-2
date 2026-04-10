@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,213 +6,79 @@
 <title>Particle Sculptor</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@300;400;600&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #030309;
-    --panel: rgba(8, 8, 20, 0.85);
-    --border: rgba(255,255,255,0.07);
-    --accent: #7DF9FF;
-    --text: #c8cfe0;
-    --text-dim: #4a5068;
-    --radius: 12px;
+    --bg: #030309; --panel: rgba(6,6,18,0.88); --border: rgba(255,255,255,0.08);
+    --accent: #7DF9FF; --text: #c8cfe0; --text-dim: #4a5068; --radius: 12px;
   }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-  }
-
-  #canvas-container {
-    position: fixed; inset: 0;
-  }
-
-  canvas#three { display: block; width: 100% !important; height: 100% !important; }
-
-  /* ── Webcam ── */
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+  #canvas-container { position: fixed; inset: 0; }
+  #three { display: block; }
   #webcam-wrap {
-    position: fixed;
-    bottom: 24px; right: 24px;
-    width: 160px; height: 120px;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    background: #000;
-    z-index: 20;
-    box-shadow: 0 0 24px rgba(125,249,255,0.12);
+    position: fixed; bottom: 24px; right: 24px; width: 160px; height: 120px;
+    border-radius: 10px; overflow: hidden; border: 1px solid var(--border);
+    background: #000; z-index: 20; box-shadow: 0 0 24px rgba(125,249,255,0.12);
   }
   #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.85; }
   #gesture-label {
-    position: absolute; bottom: 6px; left: 0; right: 0;
-    text-align: center;
-    font-family: 'Space Mono', monospace;
-    font-size: 9px;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-    text-shadow: 0 0 8px var(--accent);
+    position: absolute; bottom: 6px; left: 0; right: 0; text-align: center;
+    font-family: 'Space Mono', monospace; font-size: 8.5px;
+    color: var(--accent); letter-spacing: 0.08em; text-shadow: 0 0 8px var(--accent);
   }
-  #hand-canvas {
-    position: absolute; inset: 0;
-    pointer-events: none;
-  }
-
-  /* ── Side Panel ── */
+  #hand-canvas { position: absolute; inset: 0; pointer-events: none; }
   #panel {
-    position: fixed;
-    left: 20px; top: 50%;
-    transform: translateY(-50%);
-    width: 200px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(20px);
-    padding: 18px 16px;
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+    position: fixed; left: 20px; top: 50%; transform: translateY(-50%); width: 200px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    backdrop-filter: blur(20px); padding: 18px 16px; z-index: 20;
+    display: flex; flex-direction: column; gap: 18px;
   }
-
-  .panel-title {
-    font-size: 10px;
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 0.15em;
-    color: var(--text-dim);
-    text-transform: uppercase;
-  }
-
-  .section { display: flex; flex-direction: column; gap: 8px; }
-
-  /* Templates */
-  .template-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
+  .panel-title { font-size: 10px; font-family: 'Space Mono', monospace; letter-spacing: 0.15em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px; }
+  .section { display: flex; flex-direction: column; gap: 6px; }
+  .template-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .tpl-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    font-size: 11px;
-    padding: 7px 4px;
-    cursor: pointer;
-    transition: all 0.2s;
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'Syne', sans-serif; font-size: 11px;
+    padding: 7px 4px; cursor: pointer; transition: all 0.2s;
     display: flex; flex-direction: column; align-items: center; gap: 3px;
   }
-  .tpl-btn span.icon { font-size: 18px; }
+  .tpl-btn .icon { font-size: 17px; }
   .tpl-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(125,249,255,0.05); }
-  .tpl-btn.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(125,249,255,0.1);
-    box-shadow: 0 0 12px rgba(125,249,255,0.15);
-  }
-
-  /* Colour */
+  .tpl-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(125,249,255,0.1); box-shadow: 0 0 10px rgba(125,249,255,0.15); }
   .color-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .color-dot {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform 0.15s, border-color 0.15s;
-  }
+  .color-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; flex-shrink: 0; }
   .color-dot:hover { transform: scale(1.2); }
   .color-dot.active { border-color: #fff; transform: scale(1.15); }
-
-  #custom-color {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 1px dashed var(--text-dim);
-    cursor: pointer;
-    background: transparent;
-    padding: 0;
-    overflow: hidden;
-  }
+  #custom-color { width: 22px; height: 22px; border-radius: 50%; border: 1px dashed var(--text-dim); cursor: pointer; background: transparent; padding: 0; overflow: hidden; flex-shrink: 0; }
   #custom-color::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
   #custom-color::-webkit-color-swatch { border: none; border-radius: 50%; }
-
-  /* Sliders */
   .slider-row { display: flex; flex-direction: column; gap: 5px; }
   .slider-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }
   .slider-label span { font-family: 'Space Mono', monospace; color: var(--accent); font-size: 10px; }
-  input[type=range] {
-    -webkit-appearance: none;
-    width: 100%; height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    outline: none;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 13px; height: 13px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  /* Top bar */
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 3px; background: var(--border); border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 8px var(--accent); }
   #topbar {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 99px;
-    padding: 8px 22px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    color: var(--text-dim);
-    z-index: 20;
-    backdrop-filter: blur(20px);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 99px;
+    padding: 8px 22px; font-family: 'Space Mono', monospace; font-size: 11px;
+    letter-spacing: 0.12em; color: var(--text-dim); z-index: 20; backdrop-filter: blur(20px);
     display: flex; align-items: center; gap: 10px;
   }
-  #topbar .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--text-dim);
-    transition: background 0.3s, box-shadow 0.3s;
-  }
+  #topbar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); transition: background 0.3s, box-shadow 0.3s; }
   #topbar .dot.on { background: #4eff91; box-shadow: 0 0 8px #4eff91; }
-
-  /* Gesture indicator */
   #gesture-bar {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 99px;
-    padding: 8px 20px;
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    color: var(--text-dim);
-    z-index: 20;
-    backdrop-filter: blur(20px);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 99px;
+    padding: 8px 20px; font-family: 'Space Mono', monospace; font-size: 10px;
+    color: var(--text-dim); z-index: 20; backdrop-filter: blur(20px);
     display: flex; align-items: center; gap: 10px;
-    transition: opacity 0.3s;
   }
-  #tension-bar-wrap {
-    width: 80px; height: 4px;
-    background: var(--border); border-radius: 2px; overflow: hidden;
-  }
+  #tension-bar-wrap { width: 80px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
   #tension-bar { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width 0.1s; box-shadow: 0 0 6px var(--accent); }
 </style>
 </head>
 <body>
-
 <div id="canvas-container"><canvas id="three"></canvas></div>
-
-<div id="topbar">
-  <div class="dot" id="cam-dot"></div>
-  PARTICLE SCULPTOR
-</div>
-
+<div id="topbar"><div class="dot" id="cam-dot"></div>PARTICLE SCULPTOR</div>
 <div id="panel">
   <div class="section">
     <div class="panel-title">Templates</div>
@@ -226,7 +91,6 @@
       <button class="tpl-btn" data-tpl="dna"><span class="icon">🧬</span>DNA</button>
     </div>
   </div>
-
   <div class="section">
     <div class="panel-title">Colour</div>
     <div class="color-row">
@@ -239,30 +103,27 @@
       <input type="color" id="custom-color" value="#7DF9FF" title="Custom colour">
     </div>
   </div>
-
   <div class="section">
     <div class="panel-title">Controls</div>
     <div class="slider-row">
-      <div class="slider-label">Particles <span id="count-val">4000</span></div>
-      <input type="range" id="count-slider" min="500" max="8000" value="4000" step="500">
+      <div class="slider-label">Particles <span id="count-val">3000</span></div>
+      <input type="range" id="count-slider" min="500" max="8000" value="3000" step="500">
     </div>
     <div class="slider-row">
       <div class="slider-label">Speed <span id="speed-val">1.0</span></div>
       <input type="range" id="speed-slider" min="1" max="20" value="10" step="1">
     </div>
     <div class="slider-row">
-      <div class="slider-label">Size <span id="size-val">1.5</span></div>
-      <input type="range" id="size-slider" min="1" max="30" value="15" step="1">
+      <div class="slider-label">Size <span id="size-val">0.06</span></div>
+      <input type="range" id="size-slider" min="1" max="40" value="6" step="1">
     </div>
   </div>
 </div>
-
 <div id="webcam-wrap">
   <video id="webcam" autoplay playsinline muted></video>
   <canvas id="hand-canvas"></canvas>
   <div id="gesture-label">AWAITING CAMERA</div>
 </div>
-
 <div id="gesture-bar">
   <span>HAND TENSION</span>
   <div id="tension-bar-wrap"><div id="tension-bar"></div></div>
@@ -271,18 +132,16 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ─────────────────────────────────────────────
-// THREE.JS SETUP
-// ─────────────────────────────────────────────
+// ── Renderer ──────────────────────────────────
 const canvas = document.getElementById('three');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x030309, 1);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 0, 5);
+camera.position.z = 5;
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -290,32 +149,299 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ─────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────
-let state = {
-  template: 'heart',
-  color: new THREE.Color('#7DF9FF'),
-  particleCount: 4000,
-  speed: 1.0,
-  size: 1.5,
-  tension: 0,         // 0–1 from hand gesture
-  scale: 1.0,         // driven by tension
-  targetScale: 1.0,
-  time: 0
+// ── State ─────────────────────────────────────
+const state = {
+  template: 'heart', color: new THREE.Color('#7DF9FF'),
+  particleCount: 3000, speed: 1.0, size: 0.06,
+  tension: 0, scale: 1.0, time: 0
 };
 
-// ─────────────────────────────────────────────
-// PARTICLE SYSTEM
-// ─────────────────────────────────────────────
-let particleMesh = null;
-let basePositions = null;   // target shape positions
-let velocities = null;
-
-function createParticleTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
+// ── Sprite texture ────────────────────────────
+function makeSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
   const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,255,255,1)');
+  g.addColorStop(0.3,'rgba(255,255,255,0.8)');
+  g.addColorStop(0.7,'rgba(255,255,255,0.2)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+}
+const sprite = makeSprite();
+
+// ── Shape functions ───────────────────────────
+function heartPos(t) {
+  const a = t * Math.PI * 2;
+  return {
+    x: 16 * Math.pow(Math.sin(a),3) * 0.125,
+    y: (13*Math.cos(a) - 5*Math.cos(2*a) - 2*Math.cos(3*a) - Math.cos(4*a)) * 0.125,
+    z: (Math.random()-0.5)*0.12
+  };
+}
+
+function flowerPos(t) {
+  const petals = 6, a = t * Math.PI * 2;
+  const r = 1.6 * Math.abs(Math.cos(petals * a / 2));
+  return { x: r*Math.cos(a), y: r*Math.sin(a), z: (Math.random()-0.5)*0.18 };
+}
+
+function saturnPos(t, i, total) {
+  if (i < total * 0.55) {
+    const golden = Math.PI*(3-Math.sqrt(5));
+    const yy = 1 - (i/(total*0.55-1))*2;
+    const rad = Math.sqrt(Math.max(0,1-yy*yy)) * 1.3;
+    const th = golden*i;
+    return { x: rad*Math.cos(th), y: yy*1.3, z: rad*Math.sin(th) };
+  } else {
+    const a = t*Math.PI*2;
+    const ri = (i - total*0.55)/(total*0.45);
+    const r = 1.8 + ri*1.2;
+    return { x: r*Math.cos(a), y: (Math.random()-0.5)*0.07, z: r*Math.sin(a) };
+  }
+}
+
+function buddhaPos(t, i) {
+  const a = t*Math.PI*2, layer = (i%30)/30;
+  const y = layer*3.2 - 1.5;
+  let r;
+  if      (layer < 0.12) r = 0.25 + layer*2.5;
+  else if (layer < 0.42) r = 0.5 + (layer-0.12)*1.8;
+  else if (layer < 0.62) r = 1.04 - (layer-0.42)*2.5;
+  else if (layer < 0.80) r = 0.54 - (layer-0.62)*2.0;
+  else                   r = Math.max(0.04, 0.18-(layer-0.80)*2.0);
+  const jitter = (Math.random()-0.5)*0.08;
+  return { x:(r+jitter)*Math.cos(a), y, z:(r+jitter)*Math.sin(a) };
+}
+
+function fireworksPos() {
+  const phi=Math.acos(2*Math.random()-1), th=Math.random()*Math.PI*2;
+  const r=0.05+Math.random()*0.15;
+  return { x:r*Math.sin(phi)*Math.cos(th), y:r*Math.cos(phi), z:r*Math.sin(phi)*Math.sin(th) };
+}
+
+function dnaPos(t, i) {
+  const strand=i%2, a=t*Math.PI*8+strand*Math.PI;
+  return { x:0.7*Math.cos(a), y:t*4.0-2.0, z:0.7*Math.sin(a) };
+}
+
+function buildBase(tpl, count) {
+  const arr = new Float32Array(count*3);
+  for (let i=0; i<count; i++) {
+    const t=i/count; let p;
+    switch(tpl) {
+      case 'heart':     p=heartPos(t); break;
+      case 'flower':    p=flowerPos(t); break;
+      case 'saturn':    p=saturnPos(t,i,count); break;
+      case 'buddha':    p=buddhaPos(t,i); break;
+      case 'fireworks': p=fireworksPos(); break;
+      case 'dna':       p=dnaPos(t,i); break;
+      default:          p=heartPos(t);
+    }
+    arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z;
+  }
+  return arr;
+}
+
+// ── Particle mesh ─────────────────────────────
+let pts=null, basePos=null, vel=null;
+
+function buildParticles() {
+  if (pts) { scene.remove(pts); pts.geometry.dispose(); pts.material.dispose(); pts=null; }
+  const count = state.particleCount;
+  basePos = buildBase(state.template, count);
+  vel = new Float32Array(count*3);
+  const pos = new Float32Array(basePos);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const mat = new THREE.PointsMaterial({
+    size: state.size, map: sprite, color: state.color,
+    transparent: true, alphaTest: 0.004,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+  });
+  pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+}
+buildParticles();
+
+// ── Fireworks ─────────────────────────────────
+let fwVel=null, fwActive=false;
+function triggerFireworks() {
+  if (!pts || fwActive) return;
+  const count=state.particleCount; fwVel=new Float32Array(count*3);
+  for (let i=0; i<count; i++) {
+    const phi=Math.acos(2*Math.random()-1), th=Math.random()*Math.PI*2;
+    const sp=0.05+Math.random()*0.09;
+    fwVel[i*3]=sp*Math.sin(phi)*Math.cos(th);
+    fwVel[i*3+1]=sp*Math.cos(phi);
+    fwVel[i*3+2]=sp*Math.sin(phi)*Math.sin(th);
+  }
+  fwActive=true;
+  setTimeout(()=>{ fwActive=false; buildParticles(); }, 2800);
+}
+
+// ── Animate ───────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  state.time += 0.01 * state.speed;
+
+  const targetScale = 0.5 + state.tension * 2.5;
+  state.scale += (targetScale - state.scale) * 0.07;
+
+  if (pts) {
+    pts.material.size = state.size;
+    if (state.template !== 'fireworks') {
+      pts.rotation.y += 0.003 * state.speed;
+      pts.rotation.x = Math.sin(state.time * 0.18) * 0.07;
+    }
+    const pos = pts.geometry.attributes.position.array;
+    const count = state.particleCount;
+    const sc = state.scale;
+
+    if (state.template==='fireworks' && fwActive && fwVel) {
+      for (let i=0; i<count; i++) {
+        pos[i*3]   += fwVel[i*3];
+        pos[i*3+1] += fwVel[i*3+1] - 0.0015;
+        pos[i*3+2] += fwVel[i*3+2];
+        fwVel[i*3]  *=0.96; fwVel[i*3+1]*=0.96; fwVel[i*3+2]*=0.96;
+      }
+    } else {
+      if (state.template==='dna') {
+        for (let i=0; i<count; i++) {
+          const t=i/count, strand=i%2;
+          const a=t*Math.PI*8+strand*Math.PI+state.time*0.5;
+          basePos[i*3]=0.7*Math.cos(a)*sc;
+          basePos[i*3+1]=(t*4.0-2.0)*sc;
+          basePos[i*3+2]=0.7*Math.sin(a)*sc;
+        }
+      }
+      for (let i=0; i<count; i++) {
+        const bx = state.template==='dna' ? basePos[i*3]   : basePos[i*3]*sc;
+        const by = state.template==='dna' ? basePos[i*3+1] : basePos[i*3+1]*sc;
+        const bz = state.template==='dna' ? basePos[i*3+2] : basePos[i*3+2]*sc;
+        const k=0.05, damp=0.80, turb=state.tension*0.005;
+        vel[i*3]   = (vel[i*3]   + (bx-pos[i*3])*k)*damp   + (Math.random()-0.5)*turb;
+        vel[i*3+1] = (vel[i*3+1] + (by-pos[i*3+1])*k)*damp + (Math.random()-0.5)*turb;
+        vel[i*3+2] = (vel[i*3+2] + (bz-pos[i*3+2])*k)*damp + (Math.random()-0.5)*turb;
+        pos[i*3]   += vel[i*3];
+        pos[i*3+1] += vel[i*3+1];
+        pos[i*3+2] += vel[i*3+2];
+      }
+    }
+    pts.geometry.attributes.position.needsUpdate = true;
+  }
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── MediaPipe Hands ───────────────────────────
+const videoEl=document.getElementById('webcam');
+const handCv=document.getElementById('hand-canvas');
+const hCtx=handCv.getContext('2d');
+const gLabel=document.getElementById('gesture-label');
+const camDot=document.getElementById('cam-dot');
+const tBar=document.getElementById('tension-bar');
+const tVal=document.getElementById('tension-val');
+
+(function resizeHC(){
+  const w=document.getElementById('webcam-wrap');
+  handCv.width=w.clientWidth; handCv.height=w.clientHeight;
+})();
+
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+
+async function initHands(){
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js');
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240},audio:false});
+    videoEl.srcObject=stream; camDot.classList.add('on'); gLabel.textContent='LOADING MODEL…';
+    const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`});
+    hands.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5});
+    hands.onResults(onHandResults);
+    const mpCam=new Camera(videoEl,{onFrame:async()=>{await hands.send({image:videoEl});},width:320,height:240});
+    mpCam.start(); gLabel.textContent='SHOW YOUR HAND';
+  } catch(e){ gLabel.textContent='NO CAMERA'; }
+}
+
+function handTension(lm){
+  const pinchD=Math.hypot(lm[4].x-lm[8].x,lm[4].y-lm[8].y);
+  const pinch=1-Math.min(1,pinchD/0.28);
+  const span=Math.hypot(lm[12].x-lm[0].x,lm[12].y-lm[0].y);
+  const curl=1-Math.min(1,span/0.45);
+  return pinch*0.65+curl*0.35;
+}
+
+function onHandResults(results){
+  hCtx.clearRect(0,0,handCv.width,handCv.height);
+  if(!results.multiHandLandmarks?.length){
+    state.tension=Math.max(0,state.tension-0.04);
+    gLabel.textContent='SHOW YOUR HAND'; updateTensionUI(); return;
+  }
+  let mx=0;
+  results.multiHandLandmarks.forEach(lm=>{ mx=Math.max(mx,handTension(lm)); drawSkeleton(lm); });
+  state.tension+=(mx-state.tension)*0.22;
+  updateTensionUI();
+  const p=Math.round(state.tension*100);
+  gLabel.textContent = p<25?'OPEN HAND':p<60?'HALF TENSION':'FULL SQUEEZE ✦';
+  if(state.template==='fireworks'&&results.multiHandLandmarks.length>=1&&state.tension<0.15&&!fwActive) triggerFireworks();
+}
+
+function drawSkeleton(lm){
+  const w=handCv.width,h=handCv.height;
+  const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  hCtx.strokeStyle='rgba(125,249,255,0.55)'; hCtx.lineWidth=1.2;
+  CONN.forEach(([a,b])=>{ hCtx.beginPath(); hCtx.moveTo((1-lm[a].x)*w,lm[a].y*h); hCtx.lineTo((1-lm[b].x)*w,lm[b].y*h); hCtx.stroke(); });
+  lm.forEach(p=>{ hCtx.beginPath(); hCtx.arc((1-p.x)*w,p.y*h,2.5,0,Math.PI*2); hCtx.fillStyle='rgba(125,249,255,0.9)'; hCtx.fill(); });
+}
+
+function updateTensionUI(){ const p=Math.round(state.tension*100); tBar.style.width=p+'%'; tVal.textContent=p+'%'; }
+
+initHands();
+
+// ── Panel controls ────────────────────────────
+document.querySelectorAll('.tpl-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tpl-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); state.template=btn.dataset.tpl;
+    buildParticles();
+    if(state.template==='fireworks') setTimeout(triggerFireworks,400);
+  });
+});
+
+document.querySelectorAll('.color-dot').forEach(dot=>{
+  dot.addEventListener('click',()=>{
+    document.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('active'));
+    dot.classList.add('active'); state.color=new THREE.Color(dot.dataset.color);
+    if(pts) pts.material.color.set(state.color);
+  });
+});
+
+document.getElementById('custom-color').addEventListener('input',e=>{
+  document.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('active'));
+  state.color=new THREE.Color(e.target.value);
+  if(pts) pts.material.color.set(state.color);
+});
+
+document.getElementById('count-slider').addEventListener('input',e=>{
+  state.particleCount=+e.target.value;
+  document.getElementById('count-val').textContent=state.particleCount;
+  buildParticles();
+});
+
+document.getElementById('speed-slider').addEventListener('input',e=>{
+  state.speed=+e.target.value/10;
+  document.getElementById('speed-val').textContent=state.speed.toFixed(1);
+});
+
+document.getElementById('size-slider').addEventListener('input',e=>{
+  state.size=+e.target.value/100;
+  document.getElementById('size-val').textContent=state.size.toFixed(2);
+});
+
+// ── Mouse / touch ─────────────────────────────
+let drag=false, pm={x:0,y:0};
+const cc=documenttext('2d');
   const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
   g.addColorStop(0, 'rgba(255,255,255,1)');
   g.addColorStop(0.3, 'rgba(255,255,255,0.8)');
